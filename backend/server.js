@@ -4,7 +4,7 @@ const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
-
+const cors = require('cors');
 
 dotenv.config();
 
@@ -13,6 +13,7 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware para manejar solicitudes JSON
 app.use(express.json());
+app.use(cors()); // Habilitar CORS para conectar con el front
 
 // Conexión a la base de datos SQLite
 const db = new sqlite3.Database('./database.db', (err) => {
@@ -245,6 +246,21 @@ app.get('/api/productos/:id', (req, res) => {
         res.json(row);
     });
 });
+
+// Ruta para obtener los productos
+app.get('/api/productos', (req, res) => {
+    const query = 'SELECT id, nombre, precio_venta, cantidad_stock FROM productos';
+
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            console.error(err.message);
+            res.status(500).json({ error: 'Error al obtener los productos' });
+        } else {
+            res.json({ datos: rows });
+        }
+    });
+});
+
 
 // Nueva ruta para buscar productos por código de barras
 app.get('/api/productos/codigo/:codigo_barra', (req, res) => {
