@@ -1,24 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../axiosconfig';
 
-
-
 const ProductTable = () => {
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null); // Estado para manejar errores
+  const [error, setError] = useState(null);
 
-  // Función para obtener productos del backend
   const fetchProductos = async () => {
     try {
-      const response = await axiosInstance.get('/productos'); // Ruta desde tu backend
-      setProductos(response.data); // Asume que el backend devuelve un array de productos
-      setError(null); // Reinicia el estado de error en caso de éxito
+      const response = await axiosInstance.get('/productos');
+      
+      // Verifica si la respuesta tiene la propiedad 'productos' y es un array
+      if (response.data && Array.isArray(response.data.productos)) {
+        setProductos(response.data.productos);
+        setError(null);
+      } else {
+        throw new Error('Los datos no tienen el formato esperado.');
+      }
     } catch (error) {
-      console.error('Error al obtener los productos:', error);
-      setError(
-        error.response?.data?.message || 'Hubo un problema al obtener los productos.'
-      ); // Muestra el mensaje del backend o un mensaje genérico
+      console.error('Error al obtener productos:', error);
+      setError(error.message || 'No se pudieron cargar los productos. Intenta nuevamente más tarde.');
     } finally {
       setLoading(false);
     }
@@ -28,13 +29,8 @@ const ProductTable = () => {
     fetchProductos();
   }, []);
 
-  if (loading) {
-    return <p>Cargando productos...</p>;
-  }
-
-  if (error) {
-    return <p>Error: {error}</p>;
-  }
+  if (loading) return <p>Cargando productos...</p>;
+  if (error) return <p>Error: {error}</p>;
 
   return (
     <table>
@@ -51,8 +47,8 @@ const ProductTable = () => {
           <tr key={producto.id}>
             <td>{producto.id}</td>
             <td>{producto.nombre}</td>
-            <td>{producto.precio}</td>
-            <td>{producto.stock}</td>
+            <td>{producto.precio_venta}</td>
+            <td>{producto.cantidad_stock}</td>
           </tr>
         ))}
       </tbody>

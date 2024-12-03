@@ -11,11 +11,14 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware para manejar solicitudes JSON
+// Middleware
 app.use(express.json());
-app.use(cors()); // Habilitar CORS para conectar con el front
+app.use(cors({
+    origin: 'http://localhost:3000', // Dirección del frontend
+    credentials: true
+}));
 
-// Conexión a la base de datos SQLite
+// Conexión a SQLite
 const db = new sqlite3.Database('./database.db', (err) => {
     if (err) {
         console.error('Error al conectar a la base de datos:', err.message);
@@ -148,30 +151,31 @@ app.post('/api/login', [
 
 
 // Middleware para verificar el token JWT
-function authMiddleware(req, res, next) {
-    const authHeader = req.header('Authorization');
+//function authMiddleware(req, res, next) {
+ //   const authHeader = req.header('Authorization');
 
     // Verificar que el encabezado contenga el esquema 'Bearer'
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'Acceso denegado, se requiere un token válido.' });
-    }
+    //if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    //    return res.status(401).json({ error: 'Acceso denegado, se requiere un token válido.' });
+    //}
 
     // Extraer el token después de 'Bearer '
-    const token = authHeader.split(' ')[1];
+    //const token = authHeader.split(' ')[1];
 
-    try {
+    //try {
         // Verificar el token con la clave secreta
-        const verified = jwt.verify(token, 'secreto');
-        req.user = verified; // Guardar los datos del token en req.user
-        next(); // Continuar con la siguiente función
-    } catch (err) {
-        res.status(400).json({ error: 'Token no válido.' });
-    }
-}
+        //const verified = jwt.verify(token, 'secreto');
+        //req.user = verified; // Guardar los datos del token en req.user
+        //next(); // Continuar con la siguiente función
+    //} catch (err) {
+    //    res.status(400).json({ error: 'Token no válido.' });
+    //}
+//}
 
 // Ejemplo de una ruta protegida
 // Ruta para obtener todos los productos activos
-app.get('/api/productos', authMiddleware, (req, res) => {
+
+app.get('/api/productos', (req, res) => {
     db.all('SELECT * FROM productos WHERE estado = "activo"', [], (err, rows) => {
         if (err) {
             return res.status(500).json({ error: 'Error al obtener los productos' });
@@ -179,6 +183,16 @@ app.get('/api/productos', authMiddleware, (req, res) => {
         res.json({ productos: rows });
     });
 });
+
+app.get('/api/productos', async (req, res) => {
+    try {
+      const productos = await obtenerProductosDesdeBaseDeDatos(); // Función que consulta los datos
+      res.json(productos); // Devuelve los productos en formato JSON
+    } catch (error) {
+      console.error('Error al obtener productos:', error);
+      res.status(500).json({ message: 'Error al obtener productos.' });
+    }
+  });
 
 // Ruta para insertar un producto
 app.post('/api/productos', (req, res) => {
@@ -222,17 +236,6 @@ app.post('/api/detalle-ventas', (req, res) => {
 });
 
 
-
-// Ruta para obtener todos los productos activos
-app.get('/api/productos', (req, res) => {
-    db.all('SELECT * FROM productos WHERE estado = "activo"', [], (err, rows) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        res.json({ datos: rows });
-    });
-});
-
 // Ruta para obtener un producto específico por ID
 app.get('/api/productos/:id', (req, res) => {
     const { id } = req.params;
@@ -246,21 +249,6 @@ app.get('/api/productos/:id', (req, res) => {
         res.json(row);
     });
 });
-
-// Ruta para obtener los productos
-app.get('/api/productos', (req, res) => {
-    const query = 'SELECT id, nombre, precio_venta, cantidad_stock FROM productos';
-
-    db.all(query, [], (err, rows) => {
-        if (err) {
-            console.error(err.message);
-            res.status(500).json({ error: 'Error al obtener los productos' });
-        } else {
-            res.json({ datos: rows });
-        }
-    });
-});
-
 
 // Nueva ruta para buscar productos por código de barras
 app.get('/api/productos/codigo/:codigo_barra', (req, res) => {
