@@ -9,4 +9,21 @@ const axiosInstance = axios.create({
   },
 });
 
+axiosInstance.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response) {
+      // El servidor respondió con un código de estado fuera del rango 2xx
+      console.error('Error de respuesta:', error.response);
+    } else if (error.request) {
+      // La solicitud fue hecha pero no se recibió respuesta
+      console.error('Error de solicitud:', error.request);
+    } else {
+      // Algo sucedió al configurar la solicitud
+      console.error('Error de configuración:', error.message);
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default axiosInstance;
