@@ -16,7 +16,9 @@ const ProductTable = () => {
     descripcion: '',
     estado: 'activo',
     codigo_barra: ''
-  }); // Estado para el nuevo producto
+  });
+  
+  // Estado para el nuevo producto
   const [editProducto, setEditProducto] = useState(null); // Estado para el producto en edición
 
   const fetchProductos = async () => {
