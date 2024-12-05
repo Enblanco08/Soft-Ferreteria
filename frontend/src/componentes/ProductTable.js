@@ -23,12 +23,12 @@ const ProductTable = () => {
 
   const fetchProductos = async () => {
     try {
+      setError(null); // Limpia el error antes de realizar la solicitud
       const response = await axiosInstance.get('/productos');
       if (response.data && Array.isArray(response.data.productos)) {
         setProductos(response.data.productos);
-        setError(null);
       } else {
-        throw new Error('Los datos no tienen el formato esperado.');
+        throw new Error('Formato inesperado.');
       }
     } catch (error) {
       console.error('Error al obtener productos:', error);
@@ -54,12 +54,20 @@ const ProductTable = () => {
   // Función para agregar un producto
   const handleAddProducto = async (event) => {
     event.preventDefault();
-
-    // Verifica los datos antes de enviar
+  
+    // Verifica si todos los campos están completos
+    const { nombre, categoria, precio_venta, cantidad_stock, tipo_producto, descripcion, codigo_barra } = newProducto;
+    if (!nombre || !categoria || !precio_venta || !cantidad_stock || !tipo_producto || !descripcion || !codigo_barra) {
+      setError('Por favor, complete todos los campos requeridos.');
+      return;  // Evitar enviar la solicitud si algún campo está vacío
+    }
+  
     console.log('Datos a enviar:', newProducto);
-
+  
     try {
       const response = await axiosInstance.post('/productos', newProducto);
+      console.log('Respuesta del servidor:', response);
+  
       if (response.status === 201) {
         setProductos([...productos, response.data]);
         setNewProducto({
@@ -72,13 +80,14 @@ const ProductTable = () => {
           estado: 'activo',
           codigo_barra: ''
         });
+        console.log('Producto agregado:', response.data);
       } else {
         throw new Error('Error al agregar el producto: respuesta no esperada.');
       }
     } catch (error) {
       console.error('Error al agregar producto:', error);
       setError('No se pudo agregar el producto. Intenta nuevamente más tarde.');
-
+  
       if (error.response) {
         console.error('Respuesta del servidor:', error.response.data);  // Aquí te dará detalles sobre el error
         console.error('Código de estado:', error.response.status);
@@ -109,6 +118,14 @@ const ProductTable = () => {
   // Función para actualizar un producto
   const handleUpdateProducto = async (event) => {
     event.preventDefault();
+    
+    // Verifica si todos los campos están completos en el formulario de edición
+    const { nombre, categoria, precio_venta, cantidad_stock, tipo_producto, descripcion, codigo_barra } = editProducto;
+    if (!nombre || !categoria || !precio_venta || !cantidad_stock || !tipo_producto || !descripcion || !codigo_barra) {
+      setError('Por favor, complete todos los campos requeridos.');
+      return; // Evitar enviar la solicitud si algún campo está vacío
+    }
+
     try {
       const response = await axiosInstance.put(`/productos/${editProducto.id}`, editProducto);
       setProductos(productos.map(producto => producto.id === editProducto.id ? response.data : producto)); // Actualizar el producto en la lista
@@ -266,7 +283,7 @@ const ProductTable = () => {
               onChange={(e) => setEditProducto({ ...editProducto, codigo_barra: e.target.value })}
             />
             <button type="submit">Actualizar Producto</button>
-            <button onClick={() => setEditProducto(null)}>Cancelar</button>
+            <button type="button" onClick={() => setEditProducto(null)}>Cancelar</button>
           </form>
         </div>
       )}

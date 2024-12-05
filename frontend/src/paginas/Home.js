@@ -1,27 +1,58 @@
-import React, { useState, useEffect } from 'react'; 
-import { Link } from 'react-router-dom'; 
-import axiosInstance from '../axiosconfig'; 
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import axiosInstance from '../axiosconfig';
 import './Home.css';
 
 const Home = () => {
     const [productos, setProductos] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [usuario, setUsuario] = useState(null); // Estado para el usuario
+    const navigate = useNavigate();
 
     useEffect(() => {
-    const fetchProductos = async () => {
-        try {
-            const response = await axiosInstance.get('/productos'); // Esta es la URL de tu API
-            console.log("Respuesta del servidor:", response.data); // Esta línea es para ver la respuesta
-            setProductos(response.data.productos); // Esto asigna los productos a tu estado
-        } catch (error) {
-            console.error('Error al obtener los productos:', error);
-        } finally {
-            setLoading(false); // Deja de mostrar "Cargando productos..."
+        const token = localStorage.getItem('token');
+        if (token && token !== 'anonimo') {
+            // Si hay un token, obtener el nombre de usuario
+            const fetchUsuario = async () => {
+                try {
+                    const response = await axiosInstance.get('/usuario', {
+                        headers: {
+                            Authorization: `Bearer ${token}`
+                        }
+                    });
+                    setUsuario(response.data.username); // Guardamos el nombre de usuario
+                } catch (error) {
+                    console.error('Error al obtener usuario:', error);
+                    setUsuario(null);
+                }
+            };
+            fetchUsuario();
+        } else {
+            // Si no hay token o el token es 'anonimo', asignamos el acceso como anónimo
+            setUsuario('Usuario Anónimo');
         }
-    };
+    }, []);
 
-    fetchProductos();
-}, []);
+    useEffect(() => {
+        const fetchProductos = async () => {
+            try {
+                const response = await axiosInstance.get('/productos');
+                setProductos(response.data.productos);
+            } catch (error) {
+                console.error('Error al obtener los productos:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProductos();
+    }, []);
+
+    const handleLogout = () => {
+        localStorage.removeItem('token'); // Eliminar el token
+        setUsuario('Usuario Anónimo'); // Reiniciar el estado de usuario
+        navigate('/'); // Redirigir al Home, no al Login
+    };
 
     if (loading) {
         return <p className="cargando">Cargando productos...</p>;
@@ -30,10 +61,30 @@ const Home = () => {
     return (
         <div className="contenedor-principal">
             <div className="barra-opciones">
-                <Link to="/login"><button>Login</button></Link>
-                <Link to="/productos"><button>Productos</button></Link>
+                {/* Siempre mostrar el botón de login si el usuario está anónimo */}
+                {usuario === 'Usuario Anónimo' && (
+                    <Link to="/login">
+                        <button>Login</button>
+                    </Link>
+                )}
+
+                {/* Mostrar productos solo si no es anónimo */}
+                {usuario !== 'Usuario Anónimo' && (
+                    <Link to="/productos">
+                        <button>Productos</button>
+                    </Link>
+                )}
+
                 <button onClick={() => alert("Ayuda no está disponible aún.")}>Ayuda</button>
                 <button onClick={() => alert("Información de sucursales no está disponible aún.")}>Información de Sucursales</button>
+
+                {/* Mostrar el botón de "Cerrar sesión" solo si el usuario está autenticado */}
+                {usuario !== 'Usuario Anónimo' && (
+                    <div className="usuario-info">
+                        <p> {usuario}</p>
+                        <button onClick={handleLogout}>Cerrar sesión</button>
+                    </div>
+                )}
             </div>
 
             <div className="contenido">

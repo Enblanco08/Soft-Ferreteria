@@ -12,11 +12,10 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const SECRET_KEY = 'secreto'; // Reemplázalo con una clave más segura en producción
 
-
 // Middleware
 app.use(express.json());
 app.use(cors({
-    origin: 'http://localhost:3000', // Dirección del frontend
+    origin: 'http://localhost:3000',
     credentials: true
 }));
 
@@ -29,7 +28,7 @@ const db = new sqlite3.Database('./database.db', (err) => {
     }
 });
 
-// Crear las tablas en la base de datos si no existen
+// Crear las tablas si no existen
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS productos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,11 +61,11 @@ db.serialize(() => {
     )`);
 
     db.run(`CREATE TABLE IF NOT EXISTS usuarios (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT NOT NULL UNIQUE,
-      contraseña TEXT NOT NULL,
-      role TEXT NOT NULL CHECK(role IN ('user', 'gerente')) DEFAULT 'user'
-  )`);
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        contraseña TEXT NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('user', 'gerente')) DEFAULT 'user'
+    )`);
 
     db.run(`CREATE TABLE IF NOT EXISTS sucursales (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -108,32 +107,34 @@ app.post('/api/register', [
 
 // Inicio de sesión
 app.post('/api/login', [
-  body('username').notEmpty().withMessage('El nombre de usuario es requerido.'),
-  body('password').notEmpty().withMessage('La contraseña es requerida.')
+    body('username').notEmpty().withMessage('El nombre de usuario es requerido.'),
+    body('password').notEmpty().withMessage('La contraseña es requerida.')
 ], (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-  }
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
 
-  const { username, password } = req.body;
-  db.get(`SELECT * FROM usuarios WHERE username = ?`, [username], async (err, user) => {
-      if (err) {
-          return res.status(500).json({ error: 'Error en el servidor.' });
-      }
-      if (!user) {
-          return res.status(400).json({ error: 'Usuario no encontrado.' });
-      }
-      const isMatch = await bcrypt.compare(password, user.contraseña);
-      if (!isMatch) {
-          return res.status(400).json({ error: 'Contraseña incorrecta.' });
-      }
-      const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, SECRET_KEY, { expiresIn: '1h' });
-      res.json({ token, message: 'Inicio de sesión exitoso.' });
-  });
+    const { username, password } = req.body;
+    db.get(`SELECT * FROM usuarios WHERE username = ?`, [username], async (err, user) => {
+        if (err) {
+            return res.status(500).json({ error: 'Error en el servidor.' });
+        }
+        if (!user) {
+            return res.status(400).json({ error: 'Usuario no encontrado.' });
+        }
+        const isMatch = await bcrypt.compare(password, user.contraseña);
+        if (!isMatch) {
+            return res.status(400).json({ error: 'Contraseña incorrecta.' });
+        }
+        const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, SECRET_KEY, { expiresIn: '1h' });
+        res.json({ token, message: 'Inicio de sesión exitoso.' });
+    });
 });
 
 // Rutas para gestión de productos
+
+// Obtener todos los productos
 app.get('/api/productos', (req, res) => {
     db.all('SELECT * FROM productos WHERE estado = "activo"', [], (err, rows) => {
         if (err) {
@@ -143,116 +144,69 @@ app.get('/api/productos', (req, res) => {
     });
 });
 
-app.post('/api/productos', (req, res) => {
+// Agregar un nuevo producto
+app.post('/api/productos', async (req, res) => {
     const { nombre, categoria, precio_venta, costo, cantidad_stock, tipo_producto, descripcion, codigo_barra } = req.body;
+
+    // Validar que los campos obligatorios estén presentes
     if (!nombre || !categoria || !precio_venta || !costo || !cantidad_stock || !tipo_producto) {
         return res.status(400).json({ error: 'Por favor, complete todos los campos requeridos.' });
     }
-    const sql = `INSERT INTO productos (nombre, categoria, precio_venta, costo, cantidad_stock, tipo_producto, descripcion, codigo_barra) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-    const params = [nombre, categoria, precio_venta, costo, cantidad_stock, tipo_producto, descripcion, codigo_barra];
-    db.run(sql, params, function (err) {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        res.status(201).json({ id: this.lastID, mensaje: 'Producto creado exitosamente' });
-    });
+
+    try {
+        // Inserta el nuevo producto en la base de datos
+        const query = `INSERT INTO productos (nombre, categoria, precio_venta, costo, cantidad_stock, tipo_producto, descripcion, codigo_barra) 
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+        const params = [nombre, categoria, precio_venta, costo, cantidad_stock, tipo_producto, descripcion, codigo_barra];
+        db.run(query, params, function (err) {
+            if (err) {
+                return res.status(500).json({ error: 'Error al agregar producto.' });
+            }
+            res.status(201).json({ mensaje: 'Producto creado exitosamente.' });
+        });
+    } catch (error) {
+        console.error('Error al agregar producto:', error);
+        res.status(500).json({ error: 'Error al agregar producto' });
+    }
 });
 
-// Obtener todos los productos
-app.get('/api/productos', async (req, res) => {
-    try {
-      const productos = await db.all('SELECT * FROM productos');
-      res.status(200).json(productos);
-    } catch (error) {
-      console.error('Error al obtener productos:', error);
-      res.status(500).json({ error: 'Error al obtener productos' });
-    }
-  });
-  
-  // Agregar un nuevo producto
-  app.post('/api/productos', async (req, res) => {
-    const { nombre, categoria, precio, stock } = req.body;
-  
-    if (!nombre || !categoria || !precio || !stock) {
-      return res.status(400).json({ error: 'Todos los campos son obligatorios' });
-    }
-  
-    try {
-      const query = `INSERT INTO productos (nombre, categoria, precio, stock) VALUES (?, ?, ?, ?)`;
-      const params = [nombre, categoria, precio, stock];
-      await db.run(query, params);
-      res.status(201).json({ message: 'Producto agregado exitosamente' });
-    } catch (error) {
-      console.error('Error al agregar producto:', error);
-      res.status(500).json({ error: 'Error al agregar producto' });
-    }
-  });
-  
-  // Actualizar un producto
-  app.put('/api/productos/:id', async (req, res) => {
+// Actualizar un producto
+app.put('/api/productos/:id', async (req, res) => {
     const { id } = req.params;
-    const { nombre, categoria, precio, stock } = req.body;
-  
+    const { nombre, categoria, precio_venta, cantidad_stock } = req.body;
+
     try {
-      const query = `UPDATE productos SET nombre = ?, categoria = ?, precio = ?, stock = ? WHERE id = ?`;
-      const params = [nombre, categoria, precio, stock, id];
-      await db.run(query, params);
-      res.status(200).json({ message: 'Producto actualizado exitosamente' });
+        const query = `UPDATE productos SET nombre = ?, categoria = ?, precio_venta = ?, cantidad_stock = ? WHERE id = ?`;
+        const params = [nombre, categoria, precio_venta, cantidad_stock, id];
+        db.run(query, params, function (err) {
+            if (err) {
+                return res.status(500).json({ error: 'Error al actualizar producto' });
+            }
+            res.status(200).json({ message: 'Producto actualizado exitosamente' });
+        });
     } catch (error) {
-      console.error('Error al actualizar producto:', error);
-      res.status(500).json({ error: 'Error al actualizar producto' });
-    }
-  });
-  
-  // Eliminar un producto
-  app.delete('/api/productos/:id', async (req, res) => {
-    const { id } = req.params;
-  
-    try {
-      await db.run('DELETE FROM productos WHERE id = ?', [id]);
-      res.status(200).json({ message: 'Producto eliminado exitosamente' });
-    } catch (error) {
-      console.error('Error al eliminar producto:', error);
-      res.status(500).json({ error: 'Error al eliminar producto' });
-    }
-  });
-
-  // Registro de usuario
-app.post('/api/usuarios/registro', async (req, res) => {
-    const { nombre, email, password } = req.body;
-  
-    if (!nombre || !email || !password) {
-      return res.status(400).json({ error: 'Todos los campos son obligatorios' });
-    }
-  
-    try {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const query = `INSERT INTO usuarios (nombre, email, password) VALUES (?, ?, ?)`;
-      await db.run(query, [nombre, email, hashedPassword]);
-      res.status(201).json({ message: 'Usuario registrado exitosamente' });
-    } catch (error) {
-      console.error('Error al registrar usuario:', error);
-      res.status(500).json({ error: 'Error al registrar usuario' });
-    }
-  });
-  
-  
-
-
-  app.post('/api/login', (req, res) => {
-    const { username, password } = req.body;
-
-    // Validación simple (puedes reemplazar con tu lógica)
-    if (username === 'admin' && password === '12345') {
-        const token = 'fake-jwt-token'; // Usa una librería como jsonwebtoken en producción
-        return res.json({ token });
-    } else {
-        return res.status(401).json({ message: 'Usuario o contraseña incorrectos' });
+        console.error('Error al actualizar producto:', error);
+        res.status(500).json({ error: 'Error al actualizar producto' });
     }
 });
-  
-  
+
+// Eliminar un producto
+app.delete('/api/productos/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        db.run('DELETE FROM productos WHERE id = ?', [id], (err) => {
+            if (err) {
+                return res.status(500).json({ error: 'Error al eliminar producto' });
+            }
+            res.status(200).json({ message: 'Producto eliminado exitosamente' });
+        });
+    } catch (error) {
+        console.error('Error al eliminar producto:', error);
+        res.status(500).json({ error: 'Error al eliminar producto' });
+    }
+});
+
 app.listen(PORT, () => {
-    console.log(`Servidor corriendo en http://localhost:${PORT}`);
+    console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
