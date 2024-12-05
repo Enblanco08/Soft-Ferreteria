@@ -10,6 +10,8 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const SECRET_KEY = 'secreto'; // Reemplázalo con una clave más segura en producción
+
 
 // Middleware
 app.use(express.json());
@@ -60,11 +62,11 @@ db.serialize(() => {
     )`);
 
     db.run(`CREATE TABLE IF NOT EXISTS usuarios (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL UNIQUE,
-        contraseña TEXT NOT NULL,
-        role TEXT NOT NULL CHECK(role IN ('user', 'gerente')) DEFAULT 'user'
-    )`);
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL UNIQUE,
+      contraseña TEXT NOT NULL,
+      role TEXT NOT NULL CHECK(role IN ('user', 'gerente')) DEFAULT 'user'
+  )`);
 
     db.run(`CREATE TABLE IF NOT EXISTS sucursales (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -104,30 +106,31 @@ app.post('/api/register', [
     }
 });
 
+// Inicio de sesión
 app.post('/api/login', [
-    body('username').notEmpty().withMessage('El nombre de usuario es requerido.'),
-    body('password').notEmpty().withMessage('La contraseña es requerida.')
+  body('username').notEmpty().withMessage('El nombre de usuario es requerido.'),
+  body('password').notEmpty().withMessage('La contraseña es requerida.')
 ], (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+  }
 
-    const { username, password } = req.body;
-    db.get(`SELECT * FROM usuarios WHERE username = ?`, [username], async (err, user) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error en el servidor.' });
-        }
-        if (!user) {
-            return res.status(400).json({ error: 'Usuario no encontrado.' });
-        }
-        const isMatch = await bcrypt.compare(password, user.contraseña);
-        if (!isMatch) {
-            return res.status(400).json({ error: 'Contraseña incorrecta.' });
-        }
-        const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, 'secreto', { expiresIn: '1h' });
-        res.json({ token, message: 'Inicio de sesión exitoso.' });
-    });
+  const { username, password } = req.body;
+  db.get(`SELECT * FROM usuarios WHERE username = ?`, [username], async (err, user) => {
+      if (err) {
+          return res.status(500).json({ error: 'Error en el servidor.' });
+      }
+      if (!user) {
+          return res.status(400).json({ error: 'Usuario no encontrado.' });
+      }
+      const isMatch = await bcrypt.compare(password, user.contraseña);
+      if (!isMatch) {
+          return res.status(400).json({ error: 'Contraseña incorrecta.' });
+      }
+      const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, SECRET_KEY, { expiresIn: '1h' });
+      res.json({ token, message: 'Inicio de sesión exitoso.' });
+  });
 });
 
 // Rutas para gestión de productos
@@ -234,23 +237,20 @@ app.post('/api/usuarios/registro', async (req, res) => {
     }
   });
   
-  // Inicio de sesión
-  app.post('/api/usuarios/login', async (req, res) => {
-    const { email, password } = req.body;
   
-    try {
-      const user = await db.get('SELECT * FROM usuarios WHERE email = ?', [email]);
-      if (user && (await bcrypt.compare(password, user.password))) {
-        const token = jwt.sign({ id: user.id }, 'clave_secreta', { expiresIn: '1h' });
-        res.status(200).json({ message: 'Inicio de sesión exitoso', token });
-      } else {
-        res.status(401).json({ error: 'Credenciales inválidas' });
-      }
-    } catch (error) {
-      console.error('Error al iniciar sesión:', error);
-      res.status(500).json({ error: 'Error al iniciar sesión' });
+
+
+  app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+
+    // Validación simple (puedes reemplazar con tu lógica)
+    if (username === 'admin' && password === '12345') {
+        const token = 'fake-jwt-token'; // Usa una librería como jsonwebtoken en producción
+        return res.json({ token });
+    } else {
+        return res.status(401).json({ message: 'Usuario o contraseña incorrectos' });
     }
-  });
+});
   
   
 app.listen(PORT, () => {
