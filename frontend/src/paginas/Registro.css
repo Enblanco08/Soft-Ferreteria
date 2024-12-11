@@ -1,0 +1,73 @@
+/* Estilos para el contenedor principal del formulario */
+.register-container {
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Título */
+.register-container h1 {
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 20px;
+}
+
+/* Estilos para los campos de entrada */
+.input-group {
+    margin-bottom: 15px;
+}
+
+.input-group label {
+    display: block;
+    font-weight: bold;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 10px;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-top: 5px;
+}
+
+/* Botón de envío */
+.submit-button {
+    width: 100%;
+    padding: 12px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1.1rem;
+}
+
+.submit-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* Mensajes de error */
+.error-messages {
+    background-color: #ffcccc;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 15px;
+}
+
+.error-message {
+    color: #d9534f;
+    font-size: 0.9rem;
+}
+
+/* Mensaje de éxito */
+.success-message {
+    color: #5cb85c;
+    font-size: 1rem;
+    text-align: center;
+    margin-bottom: 15px;
+}

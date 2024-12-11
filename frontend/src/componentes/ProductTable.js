@@ -44,57 +44,46 @@ const ProductTable = () => {
 
   // Filtrar productos por ID
   const filteredProductos = productos.filter(producto =>
-    producto.id.toString().includes(searchId)
+    producto.id && producto.id.toString().includes(searchId)
   );
 
   const handleSearchChange = (event) => {
     setSearchId(event.target.value);
   };
-
+  
   // Función para agregar un producto
-  const handleAddProducto = async (event) => {
+  const handleAddProducto = async (event) => { 
     event.preventDefault();
   
-    // Verifica si todos los campos están completos
-    const { nombre, categoria, precio_venta, cantidad_stock, tipo_producto, descripcion, codigo_barra } = newProducto;
-    if (!nombre || !categoria || !precio_venta || !cantidad_stock || !tipo_producto || !descripcion || !codigo_barra) {
+    const { nombre, categoria, precio_venta, costo, cantidad_stock, tipo_producto, descripcion, codigo_barra } = newProducto;
+    
+    // Validar campos vacíos
+    if (!nombre || !categoria || !precio_venta || !costo || !cantidad_stock || !tipo_producto || !descripcion || !codigo_barra) {
       setError('Por favor, complete todos los campos requeridos.');
-      return;  // Evitar enviar la solicitud si algún campo está vacío
+      return;
     }
   
-    console.log('Datos a enviar:', newProducto);
+    // Preparar datos asegurando los tipos correctos
+    const productoData = {
+      ...newProducto,
+      precio_venta: parseFloat(precio_venta), // Convertir a número decimal
+      costo: parseFloat(costo), // Convertir a número decimal
+      cantidad_stock: parseInt(cantidad_stock, 10), // Convertir a número entero
+    };
   
     try {
-      const response = await axiosInstance.post('/productos', newProducto);
-      console.log('Respuesta del servidor:', response);
-  
-      if (response.status === 201) {
-        setProductos([...productos, response.data]);
-        setNewProducto({
-          nombre: '',
-          categoria: '',
-          precio_venta: '',
-          cantidad_stock: '',
-          tipo_producto: '',
-          descripcion: '',
-          estado: 'activo',
-          codigo_barra: ''
-        });
-        console.log('Producto agregado:', response.data);
-      } else {
-        throw new Error('Error al agregar el producto: respuesta no esperada.');
-      }
+      const response = await axiosInstance.post('/productos', productoData);
+      setProductos([...productos, response.data]); // Actualizar la lista de productos
+      setNewProducto({}); // Limpiar el formulario
+      setError(''); // Limpiar mensajes de error
+      alert('Producto agregado exitosamente.'); // Confirmación para el usuario
     } catch (error) {
-      console.error('Error al agregar producto:', error);
-      setError('No se pudo agregar el producto. Intenta nuevamente más tarde.');
-  
       if (error.response) {
-        console.error('Respuesta del servidor:', error.response.data);  // Aquí te dará detalles sobre el error
-        console.error('Código de estado:', error.response.status);
-      } else if (error.request) {
-        console.error('No se recibió respuesta del servidor:', error.request);
+        console.error('Error de respuesta:', error.response.data);
+        setError(error.response.data.error || 'Ocurrió un error al agregar el producto.');
       } else {
-        console.error('Error en la configuración de la solicitud:', error.message);
+        console.error('Error desconocido:', error);
+        setError('Ocurrió un error inesperado. Intenta nuevamente más tarde.');
       }
     }
   };
@@ -120,8 +109,8 @@ const ProductTable = () => {
     event.preventDefault();
     
     // Verifica si todos los campos están completos en el formulario de edición
-    const { nombre, categoria, precio_venta, cantidad_stock, tipo_producto, descripcion, codigo_barra } = editProducto;
-    if (!nombre || !categoria || !precio_venta || !cantidad_stock || !tipo_producto || !descripcion || !codigo_barra) {
+    const { nombre, categoria, precio_venta,costo , cantidad_stock, tipo_producto, descripcion, codigo_barra } = editProducto;
+    if (!nombre || !categoria || !precio_venta || !costo || !cantidad_stock || !tipo_producto || !descripcion || !codigo_barra) {
       setError('Por favor, complete todos los campos requeridos.');
       return; // Evitar enviar la solicitud si algún campo está vacío
     }
@@ -206,6 +195,12 @@ const ProductTable = () => {
             placeholder="Precio de venta"
             value={newProducto.precio_venta}
             onChange={(e) => setNewProducto({ ...newProducto, precio_venta: e.target.value })}
+          />
+          <input
+            type="number"
+            placeholder="Costo"
+            value={newProducto.costo}
+            onChange={(e) => setNewProducto({ ...newProducto, costo: e.target.value })}
           />
           <input
             type="number"

@@ -7,12 +7,12 @@ const Home = () => {
     const [productos, setProductos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [usuario, setUsuario] = useState(null); // Estado para el usuario
+    const [productosSeleccionados, setProductosSeleccionados] = useState([]); // Estado para los productos seleccionados
     const navigate = useNavigate();
 
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (token && token !== 'anonimo') {
-            // Si hay un token, obtener el nombre de usuario
             const fetchUsuario = async () => {
                 try {
                     const response = await axiosInstance.get('/usuario', {
@@ -28,7 +28,6 @@ const Home = () => {
             };
             fetchUsuario();
         } else {
-            // Si no hay token o el token es 'anonimo', asignamos el acceso como anónimo
             setUsuario('Usuario Anónimo');
         }
     }, []);
@@ -37,6 +36,7 @@ const Home = () => {
         const fetchProductos = async () => {
             try {
                 const response = await axiosInstance.get('/productos');
+                console.log('Productos recibidos:', response.data);  // Aquí verás los datos recibidos
                 setProductos(response.data.productos);
             } catch (error) {
                 console.error('Error al obtener los productos:', error);
@@ -48,10 +48,33 @@ const Home = () => {
         fetchProductos();
     }, []);
 
+    const handleSeleccionarProducto = (id) => {
+        const index = productosSeleccionados.indexOf(id);
+        let nuevosProductosSeleccionados = [...productosSeleccionados];
+        if (index > -1) {
+            nuevosProductosSeleccionados.splice(index, 1);
+        } else {
+            nuevosProductosSeleccionados.push(id);
+        }
+        setProductosSeleccionados(nuevosProductosSeleccionados);
+        localStorage.setItem('productosSeleccionados', JSON.stringify(nuevosProductosSeleccionados));
+    };
+
     const handleLogout = () => {
         localStorage.removeItem('token'); // Eliminar el token
         setUsuario('Usuario Anónimo'); // Reiniciar el estado de usuario
         navigate('/'); // Redirigir al Home, no al Login
+    };
+
+    const handleIrACarrito = () => {
+        // Recupera los productos seleccionados del localStorage
+        const productosEnCarrito = JSON.parse(localStorage.getItem('productosSeleccionados')) || [];
+
+        if (productosEnCarrito.length > 0) {
+            navigate('/carrito');  // Redirigir al carrito
+        } else {
+            alert("No hay productos seleccionados.");
+        }
     };
 
     if (loading) {
@@ -61,14 +84,18 @@ const Home = () => {
     return (
         <div className="contenedor-principal">
             <div className="barra-opciones">
-                {/* Siempre mostrar el botón de login si el usuario está anónimo */}
                 {usuario === 'Usuario Anónimo' && (
                     <Link to="/login">
                         <button>Login</button>
                     </Link>
                 )}
 
-                {/* Mostrar productos solo si no es anónimo */}
+                {usuario === 'Usuario Anónimo' && (
+                    <Link to="/registro">
+                        <button>Registrar cuenta</button> {/* Botón de registrar cuenta */}
+                    </Link>
+                )}
+
                 {usuario !== 'Usuario Anónimo' && (
                     <Link to="/productos">
                         <button>Productos</button>
@@ -78,7 +105,6 @@ const Home = () => {
                 <button onClick={() => alert("Ayuda no está disponible aún.")}>Ayuda</button>
                 <button onClick={() => alert("Información de sucursales no está disponible aún.")}>Información de Sucursales</button>
 
-                {/* Mostrar el botón de "Cerrar sesión" solo si el usuario está autenticado */}
                 {usuario !== 'Usuario Anónimo' && (
                     <div className="usuario-info">
                         <p> {usuario}</p>
@@ -92,7 +118,11 @@ const Home = () => {
                 <div className="productos-grid">
                     {productos.length > 0 ? (
                         productos.map((producto) => (
-                            <div className="producto-card" key={producto.id}>
+                            <div
+                                className={`producto-card ${productosSeleccionados.includes(producto.id) ? 'seleccionado' : ''}`}
+                                key={producto.id}
+                                onClick={() => handleSeleccionarProducto(producto.id)}
+                            >
                                 <img
                                     src={producto.imagen || "https://via.placeholder.com/150"}
                                     alt={producto.nombre}
@@ -102,7 +132,6 @@ const Home = () => {
                                     <h3>{producto.nombre}</h3>
                                     <p className="producto-precio">${producto.precio_venta}</p>
                                     <p className="producto-stock">Stock: {producto.cantidad_stock}</p>
-                                    <button className="producto-boton">Comprar</button>
                                 </div>
                             </div>
                         ))
@@ -110,6 +139,13 @@ const Home = () => {
                         <p>No hay productos disponibles en este momento.</p>
                     )}
                 </div>
+            </div>
+
+            {/* Botón para proceder a la compra */}
+            <div className="contenedor-boton-compra">
+                <button onClick={handleIrACarrito} className="boton-compra">
+                    Proceder a la compra
+                </button>
             </div>
         </div>
     );
